@@ -49,9 +49,15 @@ CSS 输出：
 }
 ```
 
-`.link` 的 CSS 输出：
+CSS 输出：
 
 ```css
+.bordered {
+  border: 1px solid red;
+  border-radius: 6px;
+  outline: none;
+}
+
 .link {
   color: blue;
   border: 1px solid red;
@@ -60,7 +66,16 @@ CSS 输出：
 }
 ```
 
-这种方式对提高代码的复用性有很大的帮助。
+这种方式对提高代码的复用性有很大的帮助。但是，`.bordered` 也被包含在输出的 CSS 中，如果你想避免这样的情况，定义混合时，在后面加一个 `()`：
+
+```less
+// .bordered 不会被编译到 CSS 中
+.bordered() {
+  border: 1px solid red;
+  border-radius: 6px;
+  outline: none;
+}
+```
 
 参考：
 
@@ -130,9 +145,9 @@ CSS 输出：
 
 - [Less 官网·概览·嵌套](https://lesscss.org/#nesting)
 
-## @规则嵌套与冒泡
+## @规则(At-rules)嵌套与冒泡
 
-@规则(At-rules)，比如常见的媒体查询 `@media`，判断 CSS 特性是否支持的 `@supports` 等在 Less 中都**可以像选择器一样进行嵌套**。我们先来看个例子：
+@规则，比如常见的媒体查询 `@media`，判断 CSS 特性是否支持的 `@supports` 等在 Less 中都**可以像选择器一样进行嵌套**。我们先来看个例子：
 
 ```less
 .component {
@@ -250,3 +265,219 @@ CSS 输出：
   width: calc(@var - (20px * 2)); // calc(100vh - (20px * 2))
 }
 ```
+
+参考：
+
+- [Less 官网·概览·calc 特例](https://lesscss.org/#operations-calc-exception)
+
+## 避免编译(Escaping)
+
+如果有些东西不想让 Less 去编译，而是原封不动的保留下来。那么我们可以使用 `~'something'` 或 `~"something"` 语法来避免编译：
+
+```less
+@min768: ~'(min-width: 768px)';
+.element {
+  @media @min768 {
+    font-size: 1.2rem;
+  }
+}
+```
+
+CSS 输出：
+
+```css
+@media (min-width: 768px) {
+  .element {
+    font-size: 1.2rem;
+  }
+}
+```
+
+在 3.5 以上的版本中，你可以直接这样写：
+
+```less
+@min768: (min-width: 768px);
+.element {
+  @media @min768 {
+    font-size: 1.2rem;
+  }
+}
+```
+
+3.5+ 的版本，之前许多依赖避免编译的情况现在都不需要再使用它了。
+
+参考：
+
+- [Less 官网·概览·避免编译](https://lesscss.org/#escaping)
+
+## 命名空间(Namespace)和访问器(Accessor)
+
+有时，出于组织代码或者提供封装的目的，你可能会想对混合进行分组。使用命名空间和访问器可以很轻松的做到这一点：
+
+```less
+// 声明命名空间
+#theme {
+  .light {
+    color: #333;
+    background: #e2e2e2;
+  }
+  .dark {
+    color: #fff;
+    background: black;
+  }
+}
+.component {
+  #namespace1.dark(); // 使用访问器
+}
+```
+
+CSS 输出：
+
+```css
+#theme .light {
+  color: #333;
+  background: #e2e2e2;
+}
+#theme .dark {
+  color: #fff;
+  background: black;
+}
+.component {
+  color: #fff;
+  background: black;
+}
+```
+
+和混合一样，如果你不希望命名空间被编译到 CSS 中，你需要在后面加上一个 `()`：
+
+```less
+// 不会被编译到 CSS 中
+#theme() {
+  .light {
+    color: #333;
+    background: #e2e2e2;
+  }
+  .dark {
+    color: #fff;
+    background: black;
+  }
+}
+```
+
+> ❓ 思考：以上述代码为例，如果只想让 `.light` 部分被编译到 CSS 中，应该怎样做呢？
+
+参考：
+
+- [Less 官网·概览·命名空间和访问器](https://lesscss.org/#namespaces-and-accessors)
+
+## 映射(Map)
+
+你可以使用混合和命名空间的属性作为值映射：
+
+```less
+#colors() {
+  primary: blue;
+  secondary: green;
+}
+
+.button {
+  color: #colors[primary];
+  border: 1px solid #colors[secondary];
+}
+```
+
+CSS 输出：
+
+```css
+.button {
+  color: blue;
+  border: 1px solid green;
+}
+```
+
+参考：
+
+- [Less 官网·概览·映射](https://lesscss.org/#maps)
+
+## 作用域
+
+less 的作用域和 CSS 的很相似，首先在当前作用域查找变量或混合，如果找不到，在从父级去继承：
+
+```less
+@var: red;
+
+#page {
+  @var: white;
+  #header {
+    color: @var; // white
+  }
+}
+```
+
+一些变成语言要求先声明变量再使用，而 Less 则不用这样，变量或混合的声明可以后置：
+
+```less
+@var: red;
+
+#page {
+  #header {
+    color: @var; // 依然是 white
+  }
+  @var: white; // 变量声明后置
+}
+```
+
+如果同一作用域下有相同的变量，那么以最后声明的变量为准：
+
+```less
+.component {
+  @var: blue;
+  .element {
+    color: @var; // red
+  }
+  @var: red;
+}
+```
+
+参考：
+
+- [Less 官网·概览·作用域](https://lesscss.org/#scope)
+
+# 注释
+
+行内注释和块级注释在 Less 中都可以使用，唯一的区别就是行内注释不会被编译到 CSS 中：
+
+```less
+/* One heck of a block
+ * style comment! */
+.component {
+  color: red; // Red fonts
+}
+```
+
+CSS 输出：
+
+```css
+/* One heck of a block
+ * style comment! */
+.component {
+  color: red;
+}
+```
+
+参考：
+
+- [Less 官网·概览·注释](https://lesscss.org/#comments)
+
+## 导入
+
+导入功能和 CSS 基本相同，区别在于引入 `.less` 文件是可以省略后缀，而引入 `.css` 文件时需要指明后缀：
+
+```less
+@import 'library'; // library.less
+@import 'typo.css';
+```
+
+参考：
+
+- [Less 官网·概览·导入](https://lesscss.org/#importing)
